@@ -1,0 +1,25 @@
+#ifndef JMN_BORON_INCLUDED
+#  define JMN_BORON_INCLUDED
+
+namespace jmn
+{
+
+}
+
+#endif // JMN_BORON_INCLUDED
+
+#ifdef __INTELLISENSE__
+#  define JMN_BORON_IMPLEMENTATION
+#endif // __INTELLISENSE__
+
+#ifdef JMN_BORON_IMPLEMENTATION
+#  ifndef JMN_BORON_IMPLEMENTATED
+#    define JMN_BORON_IMPLEMENTATED
+
+namespace jmn
+{
+
+}
+
+#  endif // JMN_BORON_IMPLEMENTATED
+#endif // JMN_BORON_IMPLEMENTATION

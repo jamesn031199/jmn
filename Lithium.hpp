@@ -1,0 +1,25 @@
+#ifndef JMN_LITHIUM_INCLUDED
+#  define JMN_LITHIUM_INCLUDED
+
+namespace jmn
+{
+
+}
+
+#endif // JMN_LITHIUM_INCLUDED
+
+#ifdef __INTELLISENSE__
+#  define JMN_LITHIUM_IMPLEMENTATION
+#endif // __INTELLISENSE__
+
+#ifdef JMN_LITHIUM_IMPLEMENTATION
+#  ifndef JMN_LITHIUM_IMPLEMENTATED
+#    define JMN_LITHIUM_IMPLEMENTATED
+
+namespace jmn
+{
+
+}
+
+#  endif // JMN_LITHIUM_IMPLEMENTATED
+#endif // JMN_LITHIUM_IMPLEMENTATION
