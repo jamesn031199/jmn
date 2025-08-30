@@ -96,9 +96,13 @@ namespace jmn
         void Initialize(Addr base, Size size);
         B8 Push(Size bytes, Addr &addr, Result &result);
         B8 Push(Size bytes, Size alignment, Addr &addr, Result &result);
-        template<typename T> B8 Push(Size count, T *&ptr, Result &result) { return Push(sizeof(T) * count, alignof(T), (Addr &)ptr, result); }
+        template<typename T> JMN_INLINE B8 Push(Size count, T *&ptr, Result &result) { return Push(sizeof(T) * count, alignof(T), (Addr &)ptr, result); }
 
         TemporaryMemory MakeTemporaryMemory() { return { *this }; }
+
+        JMN_INLINE Addr Push(Size bytes) { Result result; Addr addr = NullAddr; Push(bytes, addr, result); return addr; }
+        JMN_INLINE Addr Push(Size bytes, Size alignment) { Result result; Addr addr = NullAddr; Push(bytes, alignment, addr, result); return addr; }
+        template<typename T> JMN_INLINE Addr Push(Size count = 1) { Result result; Addr addr = NullAddr; Push(sizeof(T) * count, alignof(T), addr, result); return (T *)addr; }
     };
 
     struct MemoryHeap
@@ -122,6 +126,10 @@ namespace jmn
         B8 Alloc(Size new_size, Size alignment, Addr &new_addr, Result &result);
         B8 Realloc(Addr old_addr, Size old_size, Size new_size, Size alignment, Addr &new_addr, Result &result);
         B8 Free(Addr old_addr, Size old_size, Size &free_size, Result &result);
+
+        JMN_INLINE Addr Alloc(Size new_size, Size alignment) { Result result; Addr new_addr = NullAddr; Alloc(new_size, alignment, new_addr, result); return new_addr; }
+        JMN_INLINE Addr Realloc(Addr old_addr, Size old_size, Size new_size, Size alignment) { Result result; Addr new_addr = NullAddr; Realloc(old_addr, old_size, new_size, alignment, new_addr, result); return new_addr; }
+        JMN_INLINE Size Free(Addr old_addr, Size old_size) { Result result; Size free_size; Free(old_addr, old_size, free_size, result); return free_size; }
     };
 
     template<typename T, Size N> JMN_INLINE constexpr Size Length(T(&)[N]) { return N; }
