@@ -13,7 +13,7 @@
 
 #  define JMN_BREAK() __debugbreak()
 #  define JMN_ASSERT(expr) do { if (!(expr)) JMN_BREAK(); } while (0)
-#  define JMN_CHECK(expr, resvar, resval, jmplbl) do { if (!(expr)) { resvar = resval; goto jmplbl; } } while (0)
+#  define JMN_CHECK(expr, resvar, resval, jmplbl) do { if (!(expr)) { resvar = resval; JMN_BREAK(); goto jmplbl; } } while (0)
 #  define JMN_REALLOC_DECL(name) B8 name(Addr user_data, Addr old_addr, Size old_size, Size new_size, Size alignment, Addr &new_addr, Result &result)
 #  define JMN_LENGTH(static_array) (sizeof(static_array) / sizeof(static_array[0]))
 #  define JMN_MIN(a, b) ((a) < (b) ? (a) : (b))
@@ -55,6 +55,8 @@ namespace jmn
     enum class Result : S32
     {
         ErrorGeneric      = INT32_MIN,
+        ErrorTimeout      = -5,
+        ErrorNotFound     = -4,
         ErrorNotSupported = -3,
         ErrorOutOfMemory  = -2,
         ErrorNull         = -1,
@@ -130,11 +132,19 @@ namespace jmn
         JMN_INLINE Addr Alloc(Size new_size, Size alignment) { Result result; Addr new_addr = NullAddr; Alloc(new_size, alignment, new_addr, result); return new_addr; }
         JMN_INLINE Addr Realloc(Addr old_addr, Size old_size, Size new_size, Size alignment) { Result result; Addr new_addr = NullAddr; Realloc(old_addr, old_size, new_size, alignment, new_addr, result); return new_addr; }
         JMN_INLINE Size Free(Addr old_addr, Size old_size) { Result result; Size free_size; Free(old_addr, old_size, free_size, result); return free_size; }
+
+        template<typename T> JMN_INLINE B8 Alloc(Size new_count, T *&new_ptr, Result &result) { return Alloc(sizeof(T) * new_count, alignof(T), (Addr &)new_ptr, result); }
+        template<typename T> JMN_INLINE B8 Realloc(T *old_ptr, Size old_count, Size new_count,T *&new_ptr, Result &result) { return Realloc((Addr)old_ptr, sizeof(T) * old_count, sizeof(T) * new_count, alignof(T), (Addr &)new_ptr, result); }
+        template<typename T> JMN_INLINE B8 Free(T *old_ptr, Size old_count, Result &result) { return Free((Addr)old_ptr, sizeof(T) * old_count, result); }
+
+        template<typename T> JMN_INLINE T *Alloc(Size new_count = 1) { return (T *)Alloc(sizeof(T) * new_count, alignof(T)); }
+        template<typename T> JMN_INLINE T *Realloc(T *old_ptr, Size old_count, Size new_count) { return (T *)Realloc((Addr)old_ptr, sizeof(T) * old_count, sizeof(T) * new_count, alignof(T)); }
+        template<typename T> JMN_INLINE Size Free(T *old_ptr, Size old_count = 1) { return Free((Addr)old_ptr, sizeof(T) * old_count) / sizeof(T); }
     };
 
     template<typename T, Size N> JMN_INLINE constexpr Size Length(T(&)[N]) { return N; }
     template<typename T> JMN_INLINE T &&Min(T &&a, T &&b) { return JMN_MIN(a, b); }
-    template<typename T> JMN_INLINE T &&Max(T &&a, T &&b) { return JMN_MIN(a, b); }
+    template<typename T> JMN_INLINE T &&Max(T &&a, T &&b) { return JMN_MAX(a, b); }
 
     JMN_INLINE Addr Zero(Addr dst_addr,                Size size) { return (Addr)memset ((void *)dst_addr,                      0, size); }
     JMN_INLINE Addr Copy(Addr dst_addr, Addr src_addr, Size size) { return (Addr)memcpy ((void *)dst_addr, (void const *)src_addr, size); }
