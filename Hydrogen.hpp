@@ -11,7 +11,11 @@
 #    define JMN_INLINE inline
 #  endif
 
-#  define JMN_BREAK() __debugbreak()
+#  ifdef JMN_DEBUG_MODE
+#    define JMN_BREAK() __debugbreak()
+#  else
+#    define JMN_BREAK() (void)0
+#  endif
 #  define JMN_ASSERT(expr) do { if (!(expr)) JMN_BREAK(); } while (0)
 #  define JMN_CHECK(expr, resvar, resval, jmplbl) do { if (!(expr)) { resvar = resval; JMN_BREAK(); goto jmplbl; } } while (0)
 #  define JMN_REALLOC_DECL(name) B8 name(Addr user_data, Addr old_addr, Size old_size, Size new_size, Size alignment, Addr &new_addr, Result &result)
@@ -72,9 +76,21 @@ namespace jmn
         Addr        user_data;
         PFN_Realloc realloc;
 
-        B8 Alloc(Size new_size, Size alignment, Addr &new_addr, Result &result);
-        B8 Realloc(Addr old_addr, Size old_size, Size new_size, Size alignment, Addr &new_addr, Result &result);
-        B8 Free(Addr old_addr, Size old_size, Size &free_size, Result &result);
+        JMN_INLINE B8 Alloc(Size new_size, Size alignment, Addr &new_addr, Result &result) { return realloc(user_data, 0, 0, new_size, alignment, new_addr, result); }
+        JMN_INLINE B8 Realloc(Addr old_addr, Size old_size, Size new_size, Size alignment, Addr &new_addr, Result &result) { return realloc(user_data, old_addr, old_size, new_size, alignment, new_addr, result); }
+        JMN_INLINE B8 Free(Addr old_addr, Size old_size, Size &free_size, Result &result) { return realloc(user_data, old_addr, old_size, 0, 0, (Addr &)free_size, result); }
+
+        JMN_INLINE Addr Alloc(Size new_size, Size alignment = 1) { Result result; Addr new_addr = NullAddr; Alloc(new_size, alignment, new_addr, result); return new_addr; }
+        JMN_INLINE Addr Realloc(Addr old_addr, Size old_size, Size new_size, Size alignment = 1) { Result result; Addr new_addr = NullAddr; Realloc(old_addr, old_size, new_size, alignment, new_addr, result); return new_addr; }
+        JMN_INLINE Size Free(Addr old_addr, Size old_size = 0) { Result result; Size free_size; Free(old_addr, old_size, free_size, result); return free_size; }
+
+        template<typename T> JMN_INLINE B8 Alloc(Size new_count, T *&new_ptr, Result &result) { return Alloc(sizeof(T) * new_count, alignof(T), (Addr &)new_ptr, result); }
+        template<typename T> JMN_INLINE B8 Realloc(T *old_ptr, Size old_count, Size new_count, T *&new_ptr, Result &result) { return Realloc((Addr)old_ptr, sizeof(T) * old_count, sizeof(T) * new_count, alignof(T), (Addr &)new_ptr, result); }
+        template<typename T> JMN_INLINE B8 Free(T *old_ptr, Size old_count, Result &result) { return Free((Addr)old_ptr, sizeof(T) * old_count, result); }
+
+        template<typename T> JMN_INLINE T *Alloc(Size new_count = 1) { return (T *)Alloc(sizeof(T) * new_count, alignof(T)); }
+        template<typename T> JMN_INLINE T *Realloc(T *old_ptr, Size old_count, Size new_count) { return (T *)Realloc((Addr)old_ptr, sizeof(T) * old_count, sizeof(T) * new_count, alignof(T)); }
+        template<typename T> JMN_INLINE Size Free(T *old_ptr, Size old_count = 1) { return Free((Addr)old_ptr, sizeof(T) * old_count) / sizeof(T); }
     };
 
     struct MemoryArena
@@ -124,14 +140,22 @@ namespace jmn
         Size   block_count;
         Size   bytes_used;
 
-        void Initialize(Addr addr, Size size, Size min_block_size = DefaultMinBlockSize);
+        static JMN_REALLOC_DECL(ReallocCallback);
+
+        // Creating the heap from a raw address does not need to be destroyed later
+        void Create(Addr addr, Size size, Size min_block_size = DefaultMinBlockSize);
+
+        // Creating the heap from an existing allocator will require it to be destroyed later
+        B8 Create(Allocator allocator, Size size, Size min_block_size, Result &result);
+        void Destroy(Allocator allocator);
+
         B8 Alloc(Size new_size, Size alignment, Addr &new_addr, Result &result);
         B8 Realloc(Addr old_addr, Size old_size, Size new_size, Size alignment, Addr &new_addr, Result &result);
         B8 Free(Addr old_addr, Size old_size, Size &free_size, Result &result);
 
-        JMN_INLINE Addr Alloc(Size new_size, Size alignment) { Result result; Addr new_addr = NullAddr; Alloc(new_size, alignment, new_addr, result); return new_addr; }
-        JMN_INLINE Addr Realloc(Addr old_addr, Size old_size, Size new_size, Size alignment) { Result result; Addr new_addr = NullAddr; Realloc(old_addr, old_size, new_size, alignment, new_addr, result); return new_addr; }
-        JMN_INLINE Size Free(Addr old_addr, Size old_size) { Result result; Size free_size; Free(old_addr, old_size, free_size, result); return free_size; }
+        JMN_INLINE Addr Alloc(Size new_size, Size alignment = 1) { Result result; Addr new_addr = NullAddr; Alloc(new_size, alignment, new_addr, result); return new_addr; }
+        JMN_INLINE Addr Realloc(Addr old_addr, Size old_size, Size new_size, Size alignment = 1) { Result result; Addr new_addr = NullAddr; Realloc(old_addr, old_size, new_size, alignment, new_addr, result); return new_addr; }
+        JMN_INLINE Size Free(Addr old_addr, Size old_size = 0) { Result result; Size free_size; Free(old_addr, old_size, free_size, result); return free_size; }
 
         template<typename T> JMN_INLINE B8 Alloc(Size new_count, T *&new_ptr, Result &result) { return Alloc(sizeof(T) * new_count, alignof(T), (Addr &)new_ptr, result); }
         template<typename T> JMN_INLINE B8 Realloc(T *old_ptr, Size old_count, Size new_count,T *&new_ptr, Result &result) { return Realloc((Addr)old_ptr, sizeof(T) * old_count, sizeof(T) * new_count, alignof(T), (Addr &)new_ptr, result); }
@@ -141,6 +165,8 @@ namespace jmn
         template<typename T> JMN_INLINE T *Realloc(T *old_ptr, Size old_count, Size new_count) { return (T *)Realloc((Addr)old_ptr, sizeof(T) * old_count, sizeof(T) * new_count, alignof(T)); }
         template<typename T> JMN_INLINE Size Free(T *old_ptr, Size old_count = 1) { return Free((Addr)old_ptr, sizeof(T) * old_count) / sizeof(T); }
     };
+
+    JMN_INLINE Allocator MakeAllocator(MemoryHeap &heap) { return{ (Addr)&heap, MemoryHeap::ReallocCallback}; }
 
     template<typename T, Size N> JMN_INLINE constexpr Size Length(T(&)[N]) { return N; }
     template<typename T> JMN_INLINE T &&Min(T &&a, T &&b) { return JMN_MIN(a, b); }
@@ -324,7 +350,27 @@ namespace jmn
     ex0:return false;
     }
 
-    JMN_HYDROGEN_IMPL_INLINE void MemoryHeap::Initialize(Addr addr, Size size, Size mbs)
+    JMN_REALLOC_DECL(MemoryHeap::ReallocCallback)
+    {
+        auto &heap = *(MemoryHeap *)user_data;
+        if (old_addr)
+        {
+            if (new_size)
+            {
+                return heap.Realloc(old_addr, old_size, new_size, alignment, new_addr, result);
+            }
+            else
+            {
+                return heap.Free(old_addr, old_size, (Size &)new_addr, result);
+            }
+        }
+        else
+        {
+            return heap.Alloc(new_size, alignment, new_addr, result);
+        }
+    }
+
+    JMN_HYDROGEN_IMPL_INLINE void MemoryHeap::Create(Addr addr, Size size, Size mbs)
     {
         free           = (Block *)addr;
         used           = NULL;
@@ -336,6 +382,23 @@ namespace jmn
         free->next = NULL;
         free->offs = 0;
         free->size = size - sizeof(Block);
+    }
+
+    JMN_HYDROGEN_IMPL_INLINE B8 MemoryHeap::Create(Allocator allocator, Size size, Size mbs, Result &result)
+    {
+        Addr new_addr;
+        if (!allocator.Alloc(size, 1, new_addr, result)) goto ex0;
+        Create(new_addr, size, mbs);
+        return true;
+
+    ex0:return false;
+    }
+
+    JMN_HYDROGEN_IMPL_INLINE void MemoryHeap::Destroy(Allocator allocator)
+    {
+        // It's bad practice to destroy the heap while there are allocation present
+        JMN_ASSERT((block_count == 1) && (used == NULL));
+        allocator.Free((Addr)free, sizeof(Block) + free->size);
     }
 
     B8 MemoryHeap::Alloc(Size new_size, Size alignment, Addr &new_addr, Result &result)
