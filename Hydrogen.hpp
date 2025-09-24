@@ -120,7 +120,7 @@ namespace jmn
 
         JMN_INLINE Addr Push(Size bytes) { Result result; Addr addr = NullAddr; Push(bytes, addr, result); return addr; }
         JMN_INLINE Addr Push(Size bytes, Size alignment) { Result result; Addr addr = NullAddr; Push(bytes, alignment, addr, result); return addr; }
-        template<typename T> JMN_INLINE Addr Push(Size count = 1) { Result result; Addr addr = NullAddr; Push(sizeof(T) * count, alignof(T), addr, result); return (T *)addr; }
+        template<typename T> JMN_INLINE T *Push(Size count = 1) { Result result; Addr addr = NullAddr; Push(sizeof(T) * count, alignof(T), addr, result); return (T *)addr; }
     };
 
     struct MemoryHeap
