@@ -6,7 +6,7 @@
 namespace jmn
 {
 
-    template<typename T, Size N> struct Vector
+    template<typename T, Size N> union Vector
     {
         T dat[N];
     };
