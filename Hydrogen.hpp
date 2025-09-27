@@ -112,6 +112,8 @@ namespace jmn
         Size size;
 
         void Initialize(Addr base, Size size);
+        B8   Create(Allocator allocator, Size new_size, Result &result);
+        void Destroy(Allocator allocator);
         B8 Push(Size bytes, Addr &addr, Result &result);
         B8 Push(Size bytes, Size alignment, Addr &addr, Result &result);
         template<typename T> JMN_INLINE B8 Push(Size count, T *&ptr, Result &result) { return Push(sizeof(T) * count, alignof(T), (Addr &)ptr, result); }
@@ -327,6 +329,20 @@ namespace jmn
         base = new_base;
         used = 0;
         size = new_size;
+    }
+
+    JMN_HYDROGEN_IMPL_INLINE B8 MemoryArena::Create(Allocator allocator, Size new_size, Result &result)
+    {
+        if (!allocator.Alloc(new_size, 1, base, result)) goto ex0;
+        used = 0;
+        size = new_size;
+        return true;
+    ex0:return false;
+    }
+
+    JMN_HYDROGEN_IMPL_INLINE void MemoryArena::Destroy(Allocator allocator)
+    {
+        allocator.Free(base, size);
     }
 
     JMN_HYDROGEN_IMPL_INLINE B8 MemoryArena::Push(Size bytes, Addr &addr, Result &result)
