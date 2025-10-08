@@ -21,6 +21,9 @@ namespace jmn
     {
         struct { T dat[2]; };
         struct { T x, y; };
+
+        Vector() : x(T(0)), y(T(0)) {}
+        Vector(T x, T y) : x(x), y(y) {}
     };
 
     template<typename T> union Vector<T, 3>
