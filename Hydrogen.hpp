@@ -59,6 +59,7 @@ namespace jmn
     enum class Result : S32
     {
         ErrorGeneric      = INT32_MIN,
+        ErrorInternal     ,
         ErrorTimeout      = -5,
         ErrorNotFound     = -4,
         ErrorNotSupported = -3,
@@ -214,7 +215,7 @@ namespace jmn
     namespace internal
     {
 
-        static JMN_INLINE Addr GetMemoryHeapBlockAddress(MemoryHeap::Block &block) { return (Addr)(&block + 1) + block.offs; }
+        static JMN_INLINE Addr GetMemoryHeapBlockAddress(MemoryHeap::Block &block) { return (Addr)(&block + 1); }
 
         static JMN_INLINE MemoryHeap::Block *GetEndOfMemoryHeapBlock(MemoryHeap::Block &block) { return (MemoryHeap::Block *)((Addr)(&block + 1) + block.size); }
 
@@ -396,7 +397,7 @@ namespace jmn
 
         free->prev = NULL;
         free->next = NULL;
-        free->offs = 0;
+        free->offs = (Size)-1; // Free blocks are marked with the offset parameter maxed out
         free->size = size - sizeof(Block);
     }
 
@@ -434,6 +435,11 @@ namespace jmn
                     prev_used = next_used;
                     next_used = next_used->next;
                 }
+                // Internal checks to make sure something won't break
+                JMN_CHECK(curr_free->offs == (Size)-1, result, Result::ErrorInternal, ex0);
+                if (prev_used) JMN_CHECK((prev_used < curr_free), result, Result::ErrorInternal, ex0);
+                if (next_used) JMN_CHECK((curr_free < next_used), result, Result::ErrorInternal, ex0);
+                if (prev_used && next_used) JMN_CHECK((prev_used != next_used), result, Result::ErrorInternal, ex0);
 
                 auto const curr_addr = internal::GetMemoryHeapBlockAddress(*curr_free);
                 auto const curr_offs = ComputeAlignmentOffset(curr_addr, alignment);
@@ -448,7 +454,7 @@ namespace jmn
                         auto const new_free = (Block *)(curr_addr + aligned_size);
                         new_free ->prev = NULL;
                         new_free ->next = NULL;
-                        new_free ->offs = 0;
+                        new_free ->offs = (Size)-1; // Free blocks are marked with the offset parameter maxed out
                         new_free ->size = remaining_size - sizeof(Block);
                         curr_free->size = aligned_size;
                         internal::MemoryHeapConnectFreeBlock(*this, *new_free, curr_free, curr_free->next);
@@ -504,8 +510,12 @@ namespace jmn
                     prev_free = next_free;
                     next_free = next_free->next;
                 }
+                // Internal checks to make sure something won't break
+                if (prev_free) JMN_CHECK((prev_free < curr_used) && (prev_free->offs == (Size)-1), result, Result::ErrorInternal, ex0);
+                if (next_free) JMN_CHECK((curr_used < next_free) && (next_free->offs == (Size)-1), result, Result::ErrorInternal, ex0);
+                if (prev_free && next_free) JMN_CHECK((prev_free != next_free), result, Result::ErrorInternal, ex0);
 
-                auto const curr_addr = internal::GetMemoryHeapBlockAddress(*curr_used);
+                auto const curr_addr = internal::GetMemoryHeapBlockAddress(*curr_used) + curr_used->offs;
                 if (curr_addr == old_addr)
                 {
                     free_size = curr_used->size - curr_used->offs;
@@ -513,12 +523,13 @@ namespace jmn
                     internal::MemoryHeapDisconnectUsedBlock(*this, *curr_used);
 
                     auto const new_free = curr_used; // Variable used as a semantic rename
-                    new_free->offs = 0;
+                    new_free->offs = (Size)-1; // Free blocks are marked with the offset parameter maxed out
                     internal::MemoryHeapConnectFreeBlock(*this, *new_free, prev_free, next_free);
 
                     bytes_used  -= (sizeof(Block) + new_free->size);
                     block_count -= internal::CombineAdjacentBlocks(prev_free, *new_free, next_free);
                     found = true;
+                    break;
                 }
 
                 curr_used = curr_used->next;
@@ -527,6 +538,7 @@ namespace jmn
         // Freeing a null addr or invalid address is not necessarily an error, just a warning
         if (!found) result = Result::WarningNotFound;
         return true;
+    ex0:return false;
     }
 
 }
