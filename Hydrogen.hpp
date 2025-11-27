@@ -11,6 +11,12 @@
 #    define JMN_INLINE inline
 #  endif
 
+#  define JMN_DELETE_COPY_AND_MOVE(x) \
+x(x const &) = delete;                \
+x(x &&) = delete;                     \
+x &operator=(x const &) = delete;     \
+x &operator=(x &&) = delete;
+
 #  ifdef JMN_DEBUG_MODE
 #    define JMN_BREAK() __debugbreak()
 #  else
@@ -18,7 +24,7 @@
 #  endif
 #  define JMN_ASSERT(expr) do { if (!(expr)) JMN_BREAK(); } while (0)
 #  define JMN_CHECK(expr, resvar, resval, jmplbl) do { if (!(expr)) { resvar = resval; JMN_BREAK(); goto jmplbl; } } while (0)
-#  define JMN_REALLOC_DECL(name) B8 name(Addr user_data, Addr old_addr, Size old_size, Size new_size, Size alignment, Addr &new_addr, Result &result)
+#  define JMN_REALLOC_DECL(name) jmn::B8 name(jmn::Addr user_data, jmn::Addr old_addr, jmn::Size old_size, jmn::Size new_size, jmn::Size alignment, jmn::Addr &new_addr, jmn::Result &result)
 #  define JMN_LENGTH(static_array) (sizeof(static_array) / sizeof(static_array[0]))
 #  define JMN_MIN(a, b) ((a) < (b) ? (a) : (b))
 #  define JMN_MAX(a, b) ((a) > (b) ? (a) : (b))
@@ -74,6 +80,18 @@ namespace jmn
 
     struct Allocator
     {
+        struct TemporaryAllocation
+        {
+            Allocator &allocator;
+            Addr const addr;
+            Size const size;
+
+            JMN_INLINE TemporaryAllocation(Allocator &allocator, Size size, Size alignment = alignof(Addr)) : allocator(allocator), addr(allocator.Alloc(size, alignment)), size(size) {}
+            JMN_INLINE ~TemporaryAllocation() { allocator.Free(addr, size); }
+
+            JMN_DELETE_COPY_AND_MOVE(TemporaryAllocation)
+        };
+
         Addr        user_data;
         PFN_Realloc realloc;
 
@@ -92,6 +110,8 @@ namespace jmn
         template<typename T> JMN_INLINE T *Alloc(Size new_count = 1) { return (T *)Alloc(sizeof(T) * new_count, alignof(T)); }
         template<typename T> JMN_INLINE T *Realloc(T *old_ptr, Size old_count, Size new_count) { return (T *)Realloc((Addr)old_ptr, sizeof(T) * old_count, sizeof(T) * new_count, alignof(T)); }
         template<typename T> JMN_INLINE Size Free(T *old_ptr, Size old_count = 1) { return Free((Addr)old_ptr, sizeof(T) * old_count) / sizeof(T); }
+
+        JMN_INLINE TemporaryAllocation MakeTemporaryAllocation(Size size, Size alignment = alignof(Addr)) { return { *this, size, alignment }; }
     };
 
     struct MemoryArena
@@ -100,12 +120,11 @@ namespace jmn
         {
             MemoryArena &arena;
             Size   const point;
-            TemporaryMemory(MemoryArena &arena) : arena(arena), point(arena.used) {}
-            TemporaryMemory(TemporaryMemory const &) = delete;
-            TemporaryMemory(TemporaryMemory &&) = delete;
-            ~TemporaryMemory() { arena.used = point; }
-            TemporaryMemory &operator=(TemporaryMemory const &) = delete;
-            TemporaryMemory &operator=(TemporaryMemory &&) = delete;
+
+            JMN_INLINE TemporaryMemory(MemoryArena &arena) : arena(arena), point(arena.used) {}
+            JMN_INLINE ~TemporaryMemory() { arena.used = point; }
+
+            JMN_DELETE_COPY_AND_MOVE(TemporaryMemory)
         };
 
         Addr base;
@@ -119,7 +138,7 @@ namespace jmn
         B8 Push(Size bytes, Size alignment, Addr &addr, Result &result);
         template<typename T> JMN_INLINE B8 Push(Size count, T *&ptr, Result &result) { return Push(sizeof(T) * count, alignof(T), (Addr &)ptr, result); }
 
-        TemporaryMemory MakeTemporaryMemory() { return { *this }; }
+        JMN_INLINE TemporaryMemory MakeTemporaryMemory() { return { *this }; }
 
         JMN_INLINE Addr Push(Size bytes) { Result result; Addr addr = NullAddr; Push(bytes, addr, result); return addr; }
         JMN_INLINE Addr Push(Size bytes, Size alignment) { Result result; Addr addr = NullAddr; Push(bytes, alignment, addr, result); return addr; }
@@ -137,6 +156,7 @@ namespace jmn
             Size   offs;
             Size   size;
         };
+
         Block *used;
         Block *free;
         Size   min_block_size;
@@ -169,7 +189,7 @@ namespace jmn
         template<typename T> JMN_INLINE Size Free(T *old_ptr, Size old_count = 1) { return Free((Addr)old_ptr, sizeof(T) * old_count) / sizeof(T); }
     };
 
-    JMN_INLINE Allocator MakeAllocator(MemoryHeap &heap) { return{ (Addr)&heap, MemoryHeap::ReallocCallback}; }
+    JMN_INLINE Allocator MakeAllocator(MemoryHeap &heap) { return{ (Addr)&heap, MemoryHeap::ReallocCallback }; }
 
     template<typename T, Size N> JMN_INLINE constexpr Size Length(T(&)[N]) { return N; }
     template<typename T> JMN_INLINE T &&Min(T &&a, T &&b) { return JMN_MIN(a, b); }
@@ -343,6 +363,7 @@ namespace jmn
 
     JMN_HYDROGEN_IMPL_INLINE void MemoryArena::Destroy(Allocator allocator)
     {
+        JMN_ASSERT(used == 0);
         allocator.Free(base, size);
     }
 
