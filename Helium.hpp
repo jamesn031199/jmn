@@ -1,7 +1,7 @@
 #ifndef JMN_HELIUM_INCLUDED
 #  define JMN_HELIUM_INCLUDED
 
-#  include <jmn/Hydrogen.hpp>
+#  include <Hydrogen.hpp>
 
 namespace jmn
 {
