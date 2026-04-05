@@ -28,7 +28,7 @@ x &operator=(x &&) = delete;
 #  define JMN_LENGTH(static_array) (sizeof(static_array) / sizeof(static_array[0]))
 #  define JMN_MIN(a, b) ((a) < (b) ? (a) : (b))
 #  define JMN_MAX(a, b) ((a) > (b) ? (a) : (b))
-
+#  define JMN_CLAMP(x, l, h) (((x) < (l)) ? (l) : (((x) > (h)) ? (h) : (x)))
 
 namespace jmn
 {
@@ -65,7 +65,7 @@ namespace jmn
     enum class Result : S32
     {
         ErrorGeneric      = INT32_MIN,
-        ErrorInternal     ,
+        ErrorInternal,
         ErrorTimeout      = -5,
         ErrorNotFound     = -4,
         ErrorNotSupported = -3,
@@ -181,7 +181,7 @@ namespace jmn
         JMN_INLINE Size Free(Addr old_addr, Size old_size = 0) { Result result; Size free_size; Free(old_addr, old_size, free_size, result); return free_size; }
 
         template<typename T> JMN_INLINE B8 Alloc(Size new_count, T *&new_ptr, Result &result) { return Alloc(sizeof(T) * new_count, alignof(T), (Addr &)new_ptr, result); }
-        template<typename T> JMN_INLINE B8 Realloc(T *old_ptr, Size old_count, Size new_count,T *&new_ptr, Result &result) { return Realloc((Addr)old_ptr, sizeof(T) * old_count, sizeof(T) * new_count, alignof(T), (Addr &)new_ptr, result); }
+        template<typename T> JMN_INLINE B8 Realloc(T *old_ptr, Size old_count, Size new_count, T *&new_ptr, Result &result) { return Realloc((Addr)old_ptr, sizeof(T) * old_count, sizeof(T) * new_count, alignof(T), (Addr &)new_ptr, result); }
         template<typename T> JMN_INLINE B8 Free(T *old_ptr, Size old_count, Result &result) { return Free((Addr)old_ptr, sizeof(T) * old_count, result); }
 
         template<typename T> JMN_INLINE T *Alloc(Size new_count = 1) { return (T *)Alloc(sizeof(T) * new_count, alignof(T)); }
@@ -195,10 +195,10 @@ namespace jmn
     template<typename T> JMN_INLINE T &&Min(T &&a, T &&b) { return JMN_MIN(a, b); }
     template<typename T> JMN_INLINE T &&Max(T &&a, T &&b) { return JMN_MAX(a, b); }
 
-    JMN_INLINE Addr Zero(Addr dst_addr,                Size size) { return (Addr)memset ((void *)dst_addr,                      0, size); }
+    JMN_INLINE Addr Zero(Addr dst_addr, Size size) { return (Addr)memset ((void *)dst_addr, 0, size); }
     JMN_INLINE Addr Copy(Addr dst_addr, Addr src_addr, Size size) { return (Addr)memcpy ((void *)dst_addr, (void const *)src_addr, size); }
     JMN_INLINE Addr Move(Addr dst_addr, Addr src_addr, Size size) { return (Addr)memmove((void *)dst_addr, (void const *)src_addr, size); }
-    template<typename T> JMN_INLINE T *Zero(T *dst              , Size count = 1) { return (T *)Zero((Addr)dst           , sizeof(T) * count); }
+    template<typename T> JMN_INLINE T *Zero(T *dst, Size count = 1) { return (T *)Zero((Addr)dst, sizeof(T) * count); }
     template<typename T> JMN_INLINE T *Copy(T *dst, T const *src, Size count = 1) { return (T *)Copy((Addr)dst, (Addr)src, sizeof(T) * count); }
     template<typename T> JMN_INLINE T *Move(T *dst, T const *src, Size count = 1) { return (T *)Move((Addr)dst, (Addr)src, sizeof(T) * count); }
 
@@ -294,7 +294,7 @@ namespace jmn
         {
             // Compute the blocks immediately adjacent to prev and curr blocks
             auto const prev_next = prev ? GetEndOfMemoryHeapBlock(*prev) : NULL; // If we provide no prev, we default to Null
-            auto const curr_next =        GetEndOfMemoryHeapBlock( curr);
+            auto const curr_next =        GetEndOfMemoryHeapBlock(curr);
 
             if (prev)
             {
