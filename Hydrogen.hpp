@@ -505,7 +505,7 @@ namespace jmn
     B8 MemoryHeap::Realloc(Addr old_addr, Size old_size, Size new_size, Size alignment, Addr &new_addr, Result &result)
     {
         new_addr = NullAddr;
-        if (!Free(old_addr, old_size, old_size, result)) goto ex0;
+        if (old_addr) if (!Free(old_addr, old_size, old_size, result)) goto ex0;
         if (!Alloc(new_size, alignment, new_addr, result)) goto ex0;
         // Move the data if we changed addresses
         if (new_addr != old_addr) Move(new_addr, old_addr, JMN_MIN(old_size, new_size));
@@ -556,8 +556,6 @@ namespace jmn
                 curr_used = curr_used->next;
             }
         }
-        // Freeing a null addr or invalid address is not necessarily an error, just a warning
-        if (!found) result = Result::WarningNotFound;
         return true;
     ex0:return false;
     }
