@@ -29,6 +29,7 @@ x &operator=(x &&) = delete;
 #  define JMN_MIN(a, b) ((a) < (b) ? (a) : (b))
 #  define JMN_MAX(a, b) ((a) > (b) ? (a) : (b))
 #  define JMN_CLAMP(x, l, h) (((x) < (l)) ? (l) : (((x) > (h)) ? (h) : (x)))
+#  define JMN_IMPLIES(p, q) (!(p) | (q))
 
 namespace jmn
 {
