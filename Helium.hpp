@@ -75,6 +75,12 @@ namespace jmn
     using V4F32 = Vector4<F32>;
     using V4F64 = Vector4<F64>;
 
+    S8  MapNormalizedS8 (F32);
+    S16 MapNormalizedS16(F32);
+
+    U8  MapNormalizedU8 (F32);
+    U16 MapNormalizedU16(F32);
+
 }
 
 #endif // JMN_HELIUM_INCLUDED
@@ -87,8 +93,50 @@ namespace jmn
 #  ifndef JMN_HELIUM_IMPLEMENTATED
 #    define JMN_HELIUM_IMPLEMENTATED
 
+#    ifdef JMN_HELIUM_SINGLE_FILE
+#      define JMN_HELIUM_IMPL_INLINE JMN_INLINE
+#    else
+#      define JMN_HELIUM_IMPL_INLINE
+#    endif // JMN_HELIUM_SINGLE_FILE
+
 namespace jmn
 {
+
+    JMN_HELIUM_IMPL_INLINE S8 MapNormalizedS8(F32 x)
+    {
+        // IDK if this works, more testing needed
+        if (x < -1.0f) return (S8)INT8_MIN;
+        if (x > +1.0f) return (S8)INT8_MAX;
+        if (x <  0.0f) return (S8)(x * -(F32)INT8_MIN);
+        if (x >  0.0f) return (S8)(x *  (F32)INT8_MAX);
+        return (S8)0;
+    }
+
+    JMN_HELIUM_IMPL_INLINE S16 MapNormalizedS16(F32 x)
+    {
+        // IDK if this works, more testing needed
+        if (x < -1.0f) return (S16)INT16_MIN;
+        if (x > +1.0f) return (S16)INT16_MAX;
+        if (x <  0.0f) return (S16)(x * -(F32)INT16_MIN);
+        if (x >  0.0f) return (S16)(x *  (F32)INT16_MAX);
+        return (S16)0;
+    }
+
+    JMN_HELIUM_IMPL_INLINE U8 MapNormalizedU8(F32 x)
+    {
+        // IDK if this works, more testing needed
+        if (x <  0.0f) return (U8)0;
+        if (x >  1.0f) return (U8)UINT8_MAX;
+        return (U8)(x * (F32)UINT8_MAX);
+    }
+
+    JMN_HELIUM_IMPL_INLINE U16 MapNormalizedU16(F32 x)
+    {
+        // IDK if this works, more testing needed
+        if (x <  0.0f) return (U16)0;
+        if (x >  1.0f) return (U16)UINT16_MAX;
+        return (U16)(x * (F32)UINT16_MAX);
+    }
 
 }
 
