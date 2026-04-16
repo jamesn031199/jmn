@@ -1,6 +1,11 @@
 #ifndef JMN_HELIUM_INCLUDED
 #  define JMN_HELIUM_INCLUDED
 
+#  define _USE_MATH_DEFINES
+
+#  include <math.h>
+#  include <cmath>
+
 #  include <Hydrogen.hpp>
 
 namespace jmn
