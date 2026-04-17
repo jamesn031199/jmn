@@ -4,6 +4,7 @@
 #  define _USE_MATH_DEFINES
 
 #  include <math.h>
+#  include <intrin.h>
 #  include <cmath>
 
 #  include <Hydrogen.hpp>
@@ -11,41 +12,97 @@
 namespace jmn
 {
 
+    enum class ComplexForm
+    {
+        Rectangular = 1,
+        Polar       = 2,
+    };
+
     template<typename T, Size N> union Vector
     {
-        T dat[N];
+        struct { T data[N]; };
+
+        JMN_INLINE Vector() : data{} {}
+        JMN_INLINE Vector(T const &s) : data() { for (Size i = 0; i < N; ++i) data[i] = s; }
     };
 
     template<typename T, Size M, Size N> union Matrix
     {
-        T dat[M * N];
-        T mtx[N][M];
+        struct { T data[M * N]; };
+        struct { T mtx[N][M]; };
+
+        JMN_INLINE Matrix() : data{} {}
+    };
+
+    template<typename T, ComplexForm F> union Complex
+    {
+        struct { T data[2]; };
+
+        JMN_INLINE Complex() : data{} {}
     };
 
     template<typename T> union Vector<T, 2>
     {
-        struct { T dat[2]; };
+        struct { T data[2]; };
         struct { T x, y; };
 
-        Vector() : x(T(0)), y(T(0)) {}
-        Vector(T x, T y) : x(x), y(y) {}
+        JMN_INLINE Vector() : data{} {}
+        JMN_INLINE Vector(T const &s) : x(s), y(s) {}
+        JMN_INLINE Vector(T const &x, T const &y) : x(x), y(y) {}
     };
 
     template<typename T> union Vector<T, 3>
     {
-        struct { T dat[3]; };
+        struct { T data[3]; };
         struct { T x, y, z; };
+        struct { T r, g, b; };
+
+        JMN_INLINE Vector() : data{}  {}
+        JMN_INLINE Vector(T const &s) : x(s), y(s), z(s) {}
+        JMN_INLINE Vector(T const &x, T const &y, T const &z) : x(x), y(y), z(z) {}
     };
 
     template<typename T> union Vector<T, 4>
     {
-        struct { T dat[4]; };
+        struct { T data[4]; };
         struct { T x, y, z, w; };
+        struct { T r, g, b, a; };
+
+        JMN_INLINE Vector() : data{} {}
+        JMN_INLINE Vector(T const &s) : x(s), y(s), z(s), w(s) {}
+        JMN_INLINE Vector(T const &x, T const &y, T const &z, T const &w) : x(x), y(y), z(z), w(w) {}
+    };
+
+    template<> union Vector<F32, 4>
+    {
+        struct { F32    data[4]; };
+        struct { F32    x, y, z, w; };
+        struct { F32    r, g, b, a; };
+        struct { __m128 m128; };
+
+        JMN_INLINE Vector() : m128(_mm_setzero_ps()) {}
+        JMN_INLINE Vector(F32 s) : m128(_mm_set1_ps(s)) {}
+        JMN_INLINE Vector(F32 x, F32 y, F32 z, F32 w) : m128(_mm_set_ps(w, z, y, x)) {}
+    };
+
+    template<typename T> union Complex<T, ComplexForm::Rectangular>
+    {
+        struct { T data[2]; };
+        struct { T a, b; };
+    };
+
+    template<typename T> union Complex<T, ComplexForm::Polar>
+    {
+        struct { T data[2]; };
+        struct { T r, p; };
     };
 
     template<typename T> using Vector2 = Vector<T, 2>;
     template<typename T> using Vector3 = Vector<T, 3>;
     template<typename T> using Vector4 = Vector<T, 4>;
+
+    template<typename T> using ComplexR = Complex<T, ComplexForm::Rectangular>;
+    template<typename T> using ComplexP = Complex<T, ComplexForm::Polar>;
 
     using V2U8  = Vector2<U8>;
     using V2U16 = Vector2<U16>;
@@ -79,6 +136,12 @@ namespace jmn
     using V4S64 = Vector4<S64>;
     using V4F32 = Vector4<F32>;
     using V4F64 = Vector4<F64>;
+
+    using CRF32 = ComplexR<F32>;
+    using CRF64 = ComplexR<F64>;
+
+    using CPF32 = ComplexP<F32>;
+    using CPF64 = ComplexP<F64>;
 
     S8  MapNormalizedS8 (F32);
     S16 MapNormalizedS16(F32);
