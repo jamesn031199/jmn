@@ -30,6 +30,8 @@ x &operator=(x &&) = delete;
 #  define JMN_MAX(a, b) ((a) > (b) ? (a) : (b))
 #  define JMN_CLAMP(x, l, h) (((x) < (l)) ? (l) : (((x) > (h)) ? (h) : (x)))
 #  define JMN_IMPLIES(p, q) (!(p) | (q))
+#  define JMN_WRAPPED_INC(index, amount, length) (((index) + (amount)) % (length))
+#  define JMN_WRAPPED_DEC(index, amount, length) (((index) >= (amount)) ? ((index) - (amount)) : ((length) + (index) - (amount)))
 
 namespace jmn
 {
