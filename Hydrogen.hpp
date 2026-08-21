@@ -117,6 +117,15 @@ namespace jmn
         JMN_INLINE TemporaryAllocation MakeTemporaryAllocation(Size size, Size alignment = alignof(Addr)) { return { *this, size, alignment }; }
     };
 
+    template<typename T> struct String { T *string; Size length; };
+    template<typename T> struct CString { T const *string; Size length; };
+    using String8   = String<C8>;
+    using String16  = String<C16>;
+    using String32  = String<C32>;
+    using CString8  = CString<C8>;
+    using CString16 = CString<C16>;
+    using CString32 = CString<C32>;
+
     struct MemoryArena
     {
         struct TemporaryMemory
@@ -192,6 +201,9 @@ namespace jmn
         template<typename T> JMN_INLINE Size Free(T *old_ptr, Size old_count = 1) { return Free((Addr)old_ptr, sizeof(T) * old_count) / sizeof(T); }
     };
 
+    template<Size N> JMN_INLINE constexpr CString8 MakeCString (C8  const(&string)[N]) { return{ string, N }; }
+    template<Size N> JMN_INLINE constexpr CString16 MakeCString(C16 const(&string)[N]) { return{ string, N }; }
+    template<Size N> JMN_INLINE constexpr CString32 MakeCString(C32 const(&string)[N]) { return{ string, N }; }
     JMN_INLINE Allocator MakeAllocator(MemoryHeap &heap) { return{ (Addr)&heap, MemoryHeap::ReallocCallback }; }
 
     template<typename T, Size N> JMN_INLINE constexpr Size Length(T(&)[N]) { return N; }
