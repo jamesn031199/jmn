@@ -201,9 +201,9 @@ namespace jmn
         template<typename T> JMN_INLINE Size Free(T *old_ptr, Size old_count = 1) { return Free((Addr)old_ptr, sizeof(T) * old_count) / sizeof(T); }
     };
 
-    template<Size N> JMN_INLINE constexpr CString8 MakeCString (C8  const(&string)[N]) { return{ string, N }; }
-    template<Size N> JMN_INLINE constexpr CString16 MakeCString(C16 const(&string)[N]) { return{ string, N }; }
-    template<Size N> JMN_INLINE constexpr CString32 MakeCString(C32 const(&string)[N]) { return{ string, N }; }
+    template<Size N> JMN_INLINE constexpr CString8 MakeCString (C8  const(&string)[N]) { return{ string, N - 1 }; }
+    template<Size N> JMN_INLINE constexpr CString16 MakeCString(C16 const(&string)[N]) { return{ string, N - 1 }; }
+    template<Size N> JMN_INLINE constexpr CString32 MakeCString(C32 const(&string)[N]) { return{ string, N - 1 }; }
     JMN_INLINE Allocator MakeAllocator(MemoryHeap &heap) { return{ (Addr)&heap, MemoryHeap::ReallocCallback }; }
 
     template<typename T, Size N> JMN_INLINE constexpr Size Length(T(&)[N]) { return N; }
